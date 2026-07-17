@@ -1,124 +1,206 @@
-# Boutik — Site E-Commerce Full Stack (MERN)
+# Boutik — Full Stack E-Commerce Website (MERN)
 
-Projet e-commerce complet développé avec la stack **MongoDB, Express.js, React.js, Node.js**, en appliquant les principes de *Clean Code* (fonctions courtes à responsabilité unique, noms explicites, gestion d'erreurs explicite, fonctions pures, ES6+, tests unitaires).
+A complete e-commerce web application built with the **MERN stack** (MongoDB, Express.js, React.js, Node.js), developed following **Clean Code** principles and deployed to production with **MongoDB Atlas**, **Render**, and **Vercel**.
 
-## Fonctionnalités
+**Live demo:** `https://YOUR-APP.vercel.app`
+**API health check:** `https://YOUR-SERVICE.onrender.com/api/health`
 
-- **Catalogue produits** : liste paginée, recherche plein texte, filtres par catégorie et par prix
-- **Fiche produit** : détails, stock, avis clients avec notes (1–5 étoiles)
-- **Authentification** : inscription, connexion, session persistante (JWT), rôles `customer` / `admin`
-- **Panier** : ajout, modification des quantités, suppression, persistance locale
-- **Commande** : adresse de livraison, choix du mode de paiement, vérification du stock, décrément automatique du stock
-- **Historique** : page « Mes commandes » avec statuts (en attente, payée, expédiée…)
-- **Administration (API)** : CRUD produits réservé au rôle admin
+---
 
-## Structure du projet
+## Features
+
+- **Product catalog** — paginated listing, full-text search, filtering by category and price range
+- **Product details** — description, stock availability, customer reviews with 1–5 star ratings
+- **Authentication** — registration, login, persistent session (JWT), `customer` / `admin` roles
+- **Shopping cart** — add items, update quantities, remove items, local persistence
+- **Checkout** — shipping address form, payment method selection, stock verification, automatic stock decrement
+- **Order history** — "My orders" page with order statuses (pending, paid, shipped, delivered, cancelled)
+- **Admin API** — product CRUD endpoints restricted to the admin role
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Database | MongoDB Atlas (free M0 cluster) |
+| Backend | Node.js, Express.js, Mongoose, JWT, bcryptjs |
+| Frontend | React 18, Vite, React Router, Axios, Context API |
+| Testing | Node.js built-in test runner (`node --test`) |
+| Hosting | Render (API) + Vercel (frontend) |
+
+## Project Structure
 
 ```
 ecommerce-mern/
-├── backend/                 # API REST Node.js / Express
-│   ├── config/db.js         # Connexion MongoDB
-│   ├── models/              # Schémas Mongoose (User, Product, Order)
-│   ├── controllers/         # Logique métier
-│   ├── routes/              # Définition des endpoints
-│   ├── middleware/          # Auth JWT, gestion d'erreurs
-│   ├── utils/               # Fonctions pures testables
-│   ├── tests/               # Tests unitaires (node --test)
-│   └── seed/seeder.js       # Données de démonstration
-└── frontend/                # Application React (Vite)
+├── backend/                 # REST API (Node.js / Express)
+│   ├── config/db.js         # MongoDB connection
+│   ├── models/              # Mongoose schemas (User, Product, Order)
+│   ├── controllers/         # Business logic
+│   ├── routes/              # Endpoint definitions
+│   ├── middleware/          # JWT auth, centralized error handling
+│   ├── utils/               # Pure, testable functions
+│   ├── tests/               # Unit tests
+│   └── seed/seeder.js       # Demo data (8 products + admin account)
+└── frontend/                # React app (Vite)
+    ├── vercel.json          # Rewrites /api/* to the Render backend + SPA fallback
     └── src/
-        ├── api/             # Client Axios + intercepteur JWT
-        ├── context/         # AuthContext, CartContext (Context API)
-        ├── components/      # Composants réutilisables
-        ├── pages/           # Pages (catalogue, produit, panier, checkout…)
-        └── styles/          # CSS global (variables, responsive)
+        ├── api/             # Axios client + JWT interceptor
+        ├── context/         # AuthContext, CartContext
+        ├── components/      # Reusable components
+        ├── pages/           # Catalog, product, cart, checkout, auth, orders
+        └── styles/          # Global CSS (design tokens, responsive)
 ```
 
-## Prérequis
+## API Endpoints
 
-- Node.js ≥ 18 et npm
-- MongoDB local **ou** un cluster gratuit [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/api/auth/register` | Public | Create an account |
+| POST | `/api/auth/login` | Public | Log in (returns a JWT) |
+| GET | `/api/auth/me` | Authenticated | Current user profile |
+| GET | `/api/products` | Public | List products (search, filters, pagination) |
+| GET | `/api/products/:id` | Public | Product details |
+| POST / PUT / DELETE | `/api/products` | Admin | Product CRUD |
+| POST | `/api/products/:id/reviews` | Authenticated | Add a review |
+| POST | `/api/orders` | Authenticated | Create an order |
+| GET | `/api/orders/mine` | Authenticated | Current user's orders |
+| PUT | `/api/orders/:id/pay` | Authenticated | Mark order as paid |
+| GET | `/api/health` | Public | Health check |
 
-## Installation et lancement en local
+---
 
-### 1. Backend
+## Step 1 — Database Setup (MongoDB Atlas)
+
+A single Atlas cluster is used for both development and production — no local MongoDB installation required.
+
+1. Created a free account at [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas) and deployed a **free M0 cluster**.
+2. **Database Access** — created a database user with a simple alphanumeric password (special characters would need URL-encoding in the connection string).
+3. **Network Access** — added the rule **`0.0.0.0/0` (Allow access from anywhere)**. This is required because Render's servers use dynamic IP addresses. Access remains protected by the database username and password.
+4. Retrieved the connection string via **Connect → Drivers → Node.js** and adapted it:
+   - replaced `<db_password>` with the database user's password;
+   - inserted the database name **`/ecommerce`** right before the `?`.
+
+Final connection string format:
+
+```
+mongodb+srv://USER:PASSWORD@cluster.xxxxx.mongodb.net/ecommerce?retryWrites=true&w=majority
+```
+
+> **Note:** if the database name is omitted, Mongoose writes to a default database called `test`. Data can be verified at any time in Atlas via **Browse Collections**.
+
+## Step 2 — Local Development
+
+### Backend
 
 ```bash
 cd backend
 npm install
-cp .env.example .env        # puis remplir MONGO_URI et JWT_SECRET
-npm run seed                # (optionnel) 8 produits de démo + compte admin
-npm run dev                 # API sur http://localhost:5000
+cp .env.example .env      # fill in MONGO_URI and JWT_SECRET
+npm run seed              # 8 demo products + admin account
+npm run dev               # API on http://localhost:5000
 ```
 
-Compte admin créé par le seed : `admin@shop.local` / `admin123`.
+Seeded admin account: `admin@shop.local` / `admin123`.
 
-### 2. Frontend
+### Frontend
 
 ```bash
 cd frontend
 npm install
-npm run dev                 # Application sur http://localhost:5173
+npm run dev               # App on http://localhost:5173
 ```
 
-Le proxy Vite redirige automatiquement `/api` vers le backend (port 5000).
+In development, the Vite proxy forwards `/api` requests to the backend on port 5000.
 
-### 3. Tests
+### Tests
 
 ```bash
 cd backend
 npm test
 ```
 
-## Principaux endpoints de l'API
-
-| Méthode | Endpoint | Accès | Description |
-|---|---|---|---|
-| POST | `/api/auth/register` | Public | Inscription |
-| POST | `/api/auth/login` | Public | Connexion (retourne un JWT) |
-| GET | `/api/auth/me` | Connecté | Profil courant |
-| GET | `/api/products` | Public | Liste (recherche, filtres, pagination) |
-| GET | `/api/products/:id` | Public | Détail d'un produit |
-| POST/PUT/DELETE | `/api/products` | Admin | CRUD produits |
-| POST | `/api/products/:id/reviews` | Connecté | Ajouter un avis |
-| POST | `/api/orders` | Connecté | Créer une commande |
-| GET | `/api/orders/mine` | Connecté | Mes commandes |
-| PUT | `/api/orders/:id/pay` | Connecté | Marquer comme payée |
-
-## Déploiement
-
-### Option A — Render / Railway (le plus simple, gratuit)
-
-1. Pousser le projet sur GitHub (voir plus bas).
-2. **Base de données** : créer un cluster gratuit sur MongoDB Atlas, autoriser l'accès réseau (`0.0.0.0/0` pour un projet d'étude) et copier la chaîne de connexion.
-3. **Backend** : sur [Render](https://render.com), créer un *Web Service* pointant sur le dossier `backend`, commande de build `npm install`, commande de démarrage `npm start`. Définir les variables d'environnement `MONGO_URI`, `JWT_SECRET`, `CLIENT_URL`.
-4. **Frontend** : créer un *Static Site* pointant sur `frontend`, build `npm install && npm run build`, dossier de publication `dist`. Ajouter une règle de *rewrite* `/api/* → URL-du-backend/api/*` (ou définir `baseURL` d'Axios sur l'URL du backend).
-
-### Option B — Microsoft Azure (comme suggéré dans le sujet)
-
-1. Créer un *Resource Group*.
-2. Base de données : Azure Cosmos DB (API MongoDB) ou MongoDB Atlas.
-3. Backend : *App Service* Node.js, déployé via GitHub Actions ; variables d'environnement dans **Configuration**.
-4. Frontend : *Static Web App* alimentée par le build Vite (`npm run build`, dossier `dist`), avec l'URL de l'API en variable d'environnement.
-
-## Publication sur GitHub (Checkpoint)
+## Step 3 — Source Control (GitHub)
 
 ```bash
-cd ecommerce-mern
 git init
 git add .
-git commit -m "feat: site e-commerce MERN complet"
+git commit -m "feat: full MERN e-commerce website"
 git branch -M main
-git remote add origin https://github.com/VOTRE_UTILISATEUR/ecommerce-mern.git
+git remote add origin https://github.com/USERNAME/ecommerce-mern.git
 git push -u origin main
 ```
 
-## Clean Code appliqué
+The `.env` file is excluded by `.gitignore` and must **never** be committed — it contains the Atlas credentials and the JWT secret.
 
-- **Noms explicites** : `calculateOrderTotal`, `verifyStockAndBuildItems`, `restoreSession` (pas de `d`, `temp`, `data` ambigus)
-- **Responsabilité unique** : contrôleurs fins, logique de prix isolée dans `utils/pricing.js`, validation du stock séparée de la création de commande
-- **Gestion d'erreurs explicite** : middleware d'erreurs centralisé, messages clairs côté client, aucun échec silencieux
-- **Fonctions pures** : `calculateOrderTotal`, `formatPrice`, `buildProductFilters` — testables sans effet de bord
-- **ES6+** : modules, `async/await`, destructuring, fonctions fléchées, `filter`/`map`/`reduce`
-- **Tests** : tests unitaires sur les fonctions pures (`npm test`)
-- **Injection de dépendances** : la connexion DB reçoit son URI en paramètre ; le client HTTP est centralisé et injecté via import unique
+## Step 4 — Backend Deployment (Render)
+
+1. On [render.com](https://render.com), created a **Web Service** connected to the GitHub repository.
+2. Configuration:
+   - **Root Directory:** `backend`
+   - **Build Command:** `npm install`
+   - **Start Command:** `npm start`
+   - **Instance Type:** Free
+3. Environment variables:
+   - `MONGO_URI` — the full Atlas connection string (with `/ecommerce`)
+   - `JWT_SECRET` — a long random string
+   - `CLIENT_URL` — the Vercel production URL (allowed CORS origin)
+4. Verified the deployment: the logs show the MongoDB connection message, and `GET /api/health` returns `{"status":"ok"}`.
+
+> **Troubleshooting encountered:** the first deploy failed with *"Could not connect to any servers in your MongoDB Atlas cluster… IP that isn't whitelisted"*. Fix: add the `0.0.0.0/0` rule in Atlas **Network Access** (found inside the *project*, under Security — not at the organization level), then trigger **Manual Deploy → Deploy latest commit** on Render.
+
+## Step 5 — Frontend Deployment (Vercel)
+
+1. Added `frontend/vercel.json` with two rewrite rules:
+
+```json
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://YOUR-SERVICE.onrender.com/api/:path*" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}
+```
+
+   - the first rule proxies all `/api/*` calls to the Render backend (replacing the Vite dev proxy);
+   - the second is the SPA fallback so React Router routes survive a page refresh.
+
+2. On [vercel.com](https://vercel.com), imported the GitHub repository with **Root Directory set to `frontend`** (Vite is auto-detected).
+3. Updated `CLIENT_URL` on Render with the final Vercel production URL.
+
+> **Troubleshooting encountered:** `/api/products` and `/api/auth/register` initially returned **404** from Vercel. Cause: the rewrite rule was not applied — `vercel.json` must live inside `frontend/`, be pushed to GitHub, and contain the real Render URL. Every push to `main` triggers an automatic Vercel redeploy.
+
+## Production Architecture
+
+```
+Browser
+   │
+   ▼
+Vercel (React static build)
+   │   /api/* rewritten to ──►  Render (Express API)
+   │                                │
+   ▼                                ▼
+React Router (SPA)            MongoDB Atlas (ecommerce db)
+```
+
+**Note on the free tiers:** the Render free instance spins down after ~15 minutes of inactivity; the first request after idling may take 30–50 seconds. This is expected behavior.
+
+## Clean Code Practices Applied
+
+- **Meaningful names** — `calculateOrderTotal`, `verifyStockAndBuildItems`, `restoreSession`; no ambiguous `d`, `temp`, `data`
+- **Single responsibility** — thin controllers; pricing logic isolated in `utils/pricing.js`; stock validation separated from order creation
+- **Explicit error handling** — centralized error middleware, clear client-side messages, no silent failures
+- **Pure functions** — `calculateOrderTotal`, `formatPrice`, `buildProductFilters`: deterministic and side-effect free
+- **Modern JavaScript** — ES modules, `async/await`, destructuring, arrow functions, `filter`/`map`/`reduce`
+- **Unit tests** — pure functions covered with the built-in Node test runner
+- **Dependency awareness** — the DB connection receives its URI as a parameter; the HTTP client is centralized with a JWT interceptor
+
+## Environment Variables Reference
+
+| Variable | Where | Description |
+|---|---|---|
+| `MONGO_URI` | Local `.env` + Render | Atlas connection string, including `/ecommerce` |
+| `JWT_SECRET` | Local `.env` + Render | Secret used to sign JWTs |
+| `JWT_EXPIRES_IN` | Local `.env` (optional) | Token lifetime, defaults to `7d` |
+| `CLIENT_URL` | Render | Frontend origin allowed by CORS |
+| `PORT` | Local `.env` (optional) | API port, defaults to 5000 (Render injects its own) |
+
+---
