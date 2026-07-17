@@ -2,8 +2,8 @@
 
 A complete e-commerce web application built with the **MERN stack** (MongoDB, Express.js, React.js, Node.js), developed following **Clean Code** principles and deployed to production with **MongoDB Atlas**, **Render**, and **Vercel**.
 
-**Live demo:** `https://YOUR-APP.vercel.app`
-**API health check:** `https://YOUR-SERVICE.onrender.com/api/health`
+**Live demo:** `checkpoint-e-commerce-lbejl2uq4-sylviedistribution1.vercel.app`
+**API health check:** `https://checkpoint-e-commerce-223q.onrender.com/api/health`
 
 ---
 
